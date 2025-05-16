@@ -4,7 +4,7 @@
 #include <sys/mman.h>
 
 #define SIZEOFNODE 1024
-#define MAXTHREAD 256
+#define MAXTHREAD 32
 #define SERVER 1
 //#define TIMECHECK
 

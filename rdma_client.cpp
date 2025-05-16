@@ -1,5 +1,6 @@
 #include "rdma_common.h"
 #include "rdma_verb.h"
+#include "zipf.hpp"
 #include <iostream>
 #include <fstream>
 #include <cstring>
@@ -19,12 +20,32 @@
 #include <thread>
 #include <signal.h>
 using namespace std;
-#define TOTALOP 320000000
-int key[TOTALOP];
+#define TOTALOP 32000000//32M
+int* key=new int[TOTALOP];
 int cs_num;
 int threadcount;
+
 int read_key(){
-	
+    const int key_range = 1600000;
+    // 1) Zipf
+    /*
+    ZipfGenerator zipf(key_range, 0.99);
+    for (int i = 0; i < TOTALOP; ++i) {
+        key[i] = zipf.Next();
+    }
+    */
+    // 2) Uniform
+    /*
+    std::mt19937_64 rng(std::random_device{}());
+    std::uniform_int_distribution<int> dist(0, key_range - 1);
+    for (int i = 0; i < TOTALOP; ++i) {
+        key[i] = dist(rng);
+    }
+    */
+    for (int i=0;i<key_range;i++){
+	key[i] = i;
+    }
+    return 0;
 }
 void
 cleanup_rdma ()
@@ -43,6 +64,7 @@ int
 thread_setup (int id)
 {
   int ret;
+  printf("connect %d\n",id);
   client_connection (cs_num, threadcount, id);
   return 0;
 }
@@ -137,11 +159,13 @@ main (int argc, char **argv)
 	  break;
 	}
     }
+  printf("test\n");
   signal (SIGINT, sigint_handler);
   int read_key();
   thread threadlist[threadcount];
   threadcount = reader + smallreader + caser;
   //setup RDMA connection
+  printf("InitRDMA %d\n",threadcount);
   for (int i = 0; i < threadcount; i++)
     {
       threadlist[i] = thread (&thread_setup, i);
