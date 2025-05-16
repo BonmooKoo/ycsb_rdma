@@ -95,9 +95,9 @@ CreateResourcesExit:
 }
 
 char* alloc_dst(){
-  size_t allocsize=(uint64_t)ALLOCSIZE*2;
-  //	char* dst=(char*)mmap(NULL, allocsize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB, -1, 0);
-	char* dst = (char*)malloc(ALLOCSIZE);
+  	size_t allocsize=(uint64_t)ALLOCSIZE;
+  	char* dst=(char*)mmap(NULL, allocsize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB, -1, 0);
+	//char* dst = (char*)malloc(ALLOCSIZE);
 	for(uint64_t i=(uint64_t)dst;i<(uint64_t)dst+allocsize;i+=1024){
 		*(char*)i=0;
 	}

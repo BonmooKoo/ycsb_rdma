@@ -3,7 +3,7 @@
 #include "keeper.h"
 #include <sys/mman.h>
 
-#define SIZEOFNODE 1024
+#define SIZEOFNODE 4*1024
 #define MAXTHREAD 32
 #define SERVER 1
 //#define TIMECHECK
@@ -129,6 +129,7 @@ int client_connection(int client, int thread_num, int thread)
 	Keeper memcache;
 	if(!memcache.connectMemcached()){
 		printf("memcache connect fail\n");
+                exit(1);
 	}
 	printf("memcache connected\n");
 	//printf("Here\n");

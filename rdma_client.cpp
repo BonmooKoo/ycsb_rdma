@@ -16,7 +16,6 @@
 #include <chrono>
 #include <vector>
 #include <atomic>
-
 #include <thread>
 #include <signal.h>
 using namespace std;
@@ -64,7 +63,6 @@ int
 thread_setup (int id)
 {
   int ret;
-  printf("connect %d\n",id);
   client_connection (cs_num, threadcount, id);
   return 0;
 }
@@ -124,7 +122,7 @@ main (int argc, char **argv)
 {
   int option;
   int test;
-  int reader=0,caser=0,smallreader=0;
+  int reader=1,caser=0,smallreader=0;
   while ((option = getopt (argc, argv, "c:t:")) != -1)
     {
       // alloc dst
@@ -151,7 +149,6 @@ main (int argc, char **argv)
 			reader = 32;
 			break;
 		default : 
-			printf("t should be 0\n");
 			break;
 	  }
 	  break;
@@ -159,9 +156,10 @@ main (int argc, char **argv)
 	  break;
 	}
     }
-  printf("test\n");
   signal (SIGINT, sigint_handler);
   int read_key();
+  
+  printf("read key end\n");
   thread threadlist[threadcount];
   threadcount = reader + smallreader + caser;
   //setup RDMA connection
@@ -169,12 +167,13 @@ main (int argc, char **argv)
   for (int i = 0; i < threadcount; i++)
     {
       threadlist[i] = thread (&thread_setup, i);
-      //thread_setup(i);
     }
   for (int i = 0; i < threadcount; i++)
     {
       threadlist[i].join ();
     }
+
+  return 0;
   printf ("Start test\n");
   timespec t1, t2;
   clock_gettime (CLOCK_REALTIME, &t1);

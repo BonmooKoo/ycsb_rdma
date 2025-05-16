@@ -105,8 +105,8 @@ int main(int argc,char* argv[]){
 	}
 	printf("Init end\n");
 
-	//dst=alloc_dst();
-	dst = (char*)malloc(ALLOCSIZE);
+	dst=alloc_dst();
+	//dst = (char*)malloc(ALLOCSIZE);
 	if(!dst){
 		printf("dst mem null\n");
 		exit(1);

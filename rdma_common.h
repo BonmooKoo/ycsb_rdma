@@ -17,7 +17,7 @@
 #include <rdma/rdma_cma.h>
 #include <infiniband/verbs.h>
 
-#define ALLOCSIZE 64*1024*1024*1024 //64GB 
+#define ALLOCSIZE 1*1024*1024*1024 //64GB 
 #define LOCAL_ID 1
 #define QP_NUM 2
 #define ADDR 3
