@@ -137,13 +137,15 @@ int client_connection(int client, int thread_num, int thread)
 	//xchange metadata
 	//get from server
 	for(int i=0;i<SERVER;i++){
-		printf("Get from server %d...", i);
+		printf("Get from server %d...\n", i);
 		int server_key=1000+500*i+thread+(client*thread_num);// ex client server 2 의 thread 3 = total thread의 11번째 
 		char server[4];
 		sprintf(server,"%d",server_key);
 		size_t size=sizeof(struct RDMA_Data);
-		char* attr=memcache.memGet(server,4,&size);
-		memcpy(rdma_attr,attr,sizeof(struct RDMA_Data));
+		printf("get cache\n");
+                char* attr=memcache.memGet(server,4,&size);
+		printf("get\n");
+                memcpy(rdma_attr,attr,sizeof(struct RDMA_Data));
 		if(rdma_attr->type1==QP_NUM){
 			server_qp_num[i]=rdma_attr->data1;
 			server_id[i]=rdma_attr->data2;
