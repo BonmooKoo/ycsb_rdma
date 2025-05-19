@@ -22,8 +22,8 @@
 using namespace std;
 #define MAXTHREAD 32
 #define TOTALOP 32000000//32M
-//#define SIZEOFNODE 1024 
-#define SIZEOFNODE 4096 
+#define SIZEOFNODE 1024 
+//#define SIZEOFNODE 4096 
 int* key=new int[TOTALOP];
 int cas_success[MAXTHREAD];
 int cas_fail[MAXTHREAD];
@@ -176,10 +176,10 @@ auto filter_and_analyze = [](uint64_t lat_arr[][TOTALOP / MAXTHREAD], const char
     size_t idx;
 
     idx = merged.size() * 0.50;
-    printf("%s tail: %.2f\t", label, merged[idx] / 1000.0);
+    printf("%s tail: %.2f,", label, merged[idx] / 1000.0);
 
     idx = merged.size() * 0.99;
-    printf("%.2f\t", merged[idx] / 1000.0);
+    printf("%.2f,", merged[idx] / 1000.0);
 
     idx = merged.size() * 0.999;
     printf("%.2f us\n",merged[idx] / 1000.0);
