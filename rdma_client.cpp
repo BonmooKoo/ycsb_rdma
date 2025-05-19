@@ -20,16 +20,17 @@
 #include <thread>
 #include <signal.h>
 using namespace std;
+#define MAXTHREAD 32
 #define TOTALOP 32000000//32M
+#define SIZEOFNODE 1024 
 int* key=new int[TOTALOP];
 int cas_success[8];
 int cas_fail[8];
 int cs_num;
 int threadcount;
-std::vector<uint64_t> read_lat;
-std::vector<uint64_t> smallread_lat;
-std::vector<uint64_t> cas_lat;
-
+uint64_t read_lat[MAXTHREAD][TOTALOP/MAXTHREAD]={0};
+uint64_t smallread_lat[8][TOTALOP/MAXTHREAD]={0};
+uint64_t cas_lat[8][TOTALOP/MAXTHREAD]={0};
 
 int read_key(){
     const int key_range = 1600000;
@@ -82,15 +83,16 @@ test_smallread (int id)
 {
   timespec t1,t2;
   printf ("[%d]START\n", id);
+  int count=0;
   for (int i = id; i < TOTALOP; i += threadcount)
     {
       clock_gettime(CLOCK_MONOTONIC_RAW, &t1);
       //rdma_read(uint64_t serveraddress, uint32_t datalength,int server,int thread)
-      int suc = rdma_read ((key[i]%(ALLOCSIZE/4096))*4096,8, 0, id);   //return current value
+      int suc = rdma_read((key[i] % (ALLOCSIZE / SIZEOFNODE)) * SIZEOFNODE,8, 0, id);   //return current value
       clock_gettime(CLOCK_MONOTONIC_RAW, &t2);    
       uint64_t elapsed_ns = (t2.tv_sec - t1.tv_sec) * 1e9 + (t2.tv_nsec - t1.tv_nsec);
-      smallread_lat.push_back(elapsed_ns);
-    }
+      smallread_lat[id%8][count++]=elapsed_ns;
+     }
   printf ("[%d]END\n", id);  
 }
 
@@ -99,27 +101,28 @@ test_cas (int id)
 {
   timespec t1,t2;
   int result;
+  int count=0;
   printf ("[%d]START\n", id);
   for (int i = id; i < TOTALOP; i += threadcount)
     {
       while(true){
       //rdma_CAS(compare,swap,serveradd,datalength,server,threadid)
       clock_gettime(CLOCK_MONOTONIC_RAW, &t1);
-      int result = rdma_CAS_returnvalue (0, 1, (key[i]%(ALLOCSIZE/4096))*4096, 8, 0, id);
+      int result = rdma_CAS_returnvalue (0, 1, (key[i] % (ALLOCSIZE / SIZEOFNODE)) * SIZEOFNODE, 8, 0, id);
       if (result == 0)
 	{
 	  //success so unlock it 
-	  int result = rdma_CAS_returnvalue (1, 0, (key[i]%(ALLOCSIZE/4096))*4096, 8, 0, id);
-	  cas_success[id]++;
+	  int result = rdma_CAS_returnvalue (1, 0, (key[i] % (ALLOCSIZE / SIZEOFNODE)) * SIZEOFNODE, 8, 0, id);
+	  cas_success[id%8]++;
       clock_gettime(CLOCK_MONOTONIC_RAW, &t2);    
       uint64_t elapsed_ns = (t2.tv_sec - t1.tv_sec) * 1e9 + (t2.tv_nsec - t1.tv_nsec);
-      cas_lat.push_back(elapsed_ns);
+      cas_lat[id%8][count++]=elapsed_ns;
 	  break;
 	}
       else
 	{
 	  //fail
-	  cas_fail[id]++; 
+	  cas_fail[id%8]++; 
 	}
       }
     }
@@ -130,15 +133,16 @@ int
 test_read (int id)
 {
   timespec t1,t2;
+  int count=0;
   printf ("[%d]START\n", id);
   for (int i = id; i < TOTALOP; i += threadcount)
     {
       //rdma_read(uint64_t serveraddress, uint32_t datalength,int server,int thread)
       clock_gettime(CLOCK_MONOTONIC_RAW, &t1);
-      int suc = rdma_read ((key[i]%(ALLOCSIZE/4096))*4096, 4096, 0, id);	//return current value
+      int suc = rdma_read ((key[i] % (ALLOCSIZE / SIZEOFNODE)) * SIZEOFNODE, SIZEOFNODE, 0, id);	//return current value
       clock_gettime(CLOCK_MONOTONIC_RAW, &t2);    
       uint64_t elapsed_ns = (t2.tv_sec - t1.tv_sec) * 1e9 + (t2.tv_nsec - t1.tv_nsec);
-      read_lat.push_back(elapsed_ns);
+      read_lat[id][count++]=elapsed_ns;
     }
   printf ("[%d]END\n", id);
 }
@@ -153,6 +157,32 @@ void print_usage(const char* prog_name) {
     printf("                        3: 32 READ\n");
     printf("If no options are provided, defaults will be used: cs_num=0, reader=1, caser=0, smallreader=0\n");
 }
+auto filter_and_analyze = [](uint64_t lat_arr[][TOTALOP / MAXTHREAD], const char* label, int count) {
+    std::vector<uint64_t> merged;
+    for (int i = 0; i < count; ++i) {
+        for (int j = 0; j < TOTALOP / MAXTHREAD; ++j) {
+            if (lat_arr[i][j] != 0)
+                merged.push_back(lat_arr[i][j]);
+        }
+    }
+
+    if (merged.empty()) {
+        printf("%s: No latency data collected.\n", label);
+        return;
+    }
+
+    std::sort(merged.begin(), merged.end());
+    size_t idx;
+
+    idx = merged.size() * 0.50;
+    printf("%s 50th percentile latency: %.2f us\n", label, merged[idx] / 1000.0);
+
+    idx = merged.size() * 0.99;
+    printf("%s 99th percentile latency: %.2f us\n", label, merged[idx] / 1000.0);
+
+    idx = merged.size() * 0.999;
+    printf("%s 99.9th percentile latency: %.2f us\n", label, merged[idx] / 1000.0);
+};
 
 
 int
@@ -242,41 +272,28 @@ for (int i = 0; i < threadcount; i++)
     (t2.tv_sec - t1.tv_sec) * 1000000000UL + t2.tv_nsec - t1.tv_nsec;
   printf ("Time : %lu msec\n", timer / 1000);
   //Get Tail latency
-  size_t idx;
-  if(caser!=0){
-  int suc=0,fail=0;
-  std::sort(cas_lat.begin(), cas_lat.end());
-  idx = cas_lat.size() * 0.50;
-  printf("CAS 50th percentile latency: %.2f us\n", cas_lat[idx] / 1000.0);
-  idx = cas_lat.size() * 0.99;
-  printf("CAS 99th percentile latency: %.2f us\n", cas_lat[idx] / 1000.0);
-  idx = cas_lat.size() * 0.999;
-  printf("CAS 99.9th percentile latency: %.2f us\n", cas_lat[idx] / 1000.0);
-  for(int i=0;i<8;i++){
-  	printf("[%d] Success :  %d, Fail: %d\n",i,cas_success[i],cas_fail[i]);
-        suc+=cas_success[i];
-        fail+=cas_fail[i];
-  }
-  printf("TOTAL Success : %d , Fail : %d\n",suc,fail);
-  }
-  if(reader!=0){
-  std::sort(read_lat.begin(), read_lat.end());
-  idx = read_lat.size() * 0.50;
-  printf("READ 50th percentile latency: %.2f us\n", read_lat[idx] / 1000.0);
-  idx = read_lat.size() * 0.99;
-  printf("READ 99th percentile latency: %.2f us\n", read_lat[idx] / 1000.0);
-  idx = read_lat.size() * 0.999;
-  printf("READ 99.9th percentile latency: %.2f us\n", read_lat[idx] / 1000.0);
-  }
-  if(smallreader!=0){
-  std::sort(smallread_lat.begin(), smallread_lat.end());
-  idx = smallread_lat.size() * 0.50;
-  printf("SmallREAD 50th percentile latency: %.2f us\n", smallread_lat[idx] / 1000.0);
-  idx = smallread_lat.size() * 0.99;
-  printf("SmallREAD 99th percentile latency: %.2f us\n", smallread_lat[idx] / 1000.0);
-  idx = smallread_lat.size() * 0.999;
-  printf("SmallREAD 99.9th percentile latency: %.2f us\n", smallread_lat[idx] / 1000.0);
-  }
+  if (caser != 0) {
+    int suc = 0, fail = 0;
+    filter_and_analyze(cas_lat, "CAS", caser);
+    for (int i = 0; i < caser; i++) {
+        printf("[%d] Success :  %d, Fail: %d\n", i, cas_success[i], cas_fail[i]);
+        suc += cas_success[i];
+        fail += cas_fail[i];
+    }
+    printf("TOTAL Success : %d , Fail : %d\n", suc, fail);
+}
+
+if (reader != 0) {
+    filter_and_analyze(read_lat, "READ", reader);
+}
+
+if (smallreader != 0) {
+    filter_and_analyze(smallread_lat, "SmallREAD", smallreader);
+}
+
+
+
+
   client_disconnect_and_clean (threadcount);
   return 0;
 }
