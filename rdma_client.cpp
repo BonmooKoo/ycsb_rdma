@@ -19,7 +19,8 @@
 #include <thread>
 #include <signal.h>
 using namespace std;
-#define TOTALOP 32000000//32M
+//#define TOTALOP 32000000//32M
+#define TOTALOP 10
 int* key=new int[TOTALOP];
 int cs_num;
 int threadcount;
@@ -123,6 +124,7 @@ main (int argc, char **argv)
   int option;
   int test;
   int reader=1,caser=0,smallreader=0;
+  cs_num=1;
   while ((option = getopt (argc, argv, "c:t:")) != -1)
     {
       // alloc dst

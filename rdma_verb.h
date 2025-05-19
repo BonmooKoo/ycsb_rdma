@@ -13,7 +13,7 @@
 #include <infiniband/verbs.h>
 #include <time.h>
 
-#define ALLOCSIZE 1024*1024*1024
+#define ALLOCSIZE 1*1024*1024*1024
 struct serverINFO{
     uint64_t address;
     uint32_t rkey;
