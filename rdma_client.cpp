@@ -25,13 +25,13 @@ using namespace std;
 //#define SIZEOFNODE 1024 
 #define SIZEOFNODE 4096 
 int* key=new int[TOTALOP];
-int cas_success[8];
-int cas_fail[8];
+int cas_success[MAXTHREAD];
+int cas_fail[MAXTHREAD];
 int cs_num;
 int threadcount;
 uint64_t read_lat[MAXTHREAD][TOTALOP/MAXTHREAD]={0};
-uint64_t smallread_lat[8][TOTALOP/MAXTHREAD]={0};
-uint64_t cas_lat[8][TOTALOP/MAXTHREAD]={0};
+uint64_t smallread_lat[MAXTHREAD][TOTALOP/MAXTHREAD]={0};
+uint64_t cas_lat[MAXTHREAD][TOTALOP/MAXTHREAD]={0};
 
 int read_key(){
     const int key_range = 1600000;
@@ -92,7 +92,7 @@ test_smallread (int id)
       int suc = rdma_read((key[i] % (ALLOCSIZE / SIZEOFNODE)) * SIZEOFNODE,8, 0, id);   //return current value
       clock_gettime(CLOCK_MONOTONIC_RAW, &t2);    
       uint64_t elapsed_ns = (t2.tv_sec - t1.tv_sec) * 1e9 + (t2.tv_nsec - t1.tv_nsec);
-      smallread_lat[id%8][count++]=elapsed_ns;
+      smallread_lat[id][count++]=elapsed_ns;
      }
   printf ("[%d]END\n", id);  
 }
@@ -114,16 +114,16 @@ test_cas (int id)
 	{
 	  //success so unlock it 
 	  int result = rdma_CAS_returnvalue (1, 0, (key[i] % (ALLOCSIZE / SIZEOFNODE)) * SIZEOFNODE, 8, 0, id);
-	  cas_success[id%8]++;
+	  cas_success[id]++;
       clock_gettime(CLOCK_MONOTONIC_RAW, &t2);    
       uint64_t elapsed_ns = (t2.tv_sec - t1.tv_sec) * 1e9 + (t2.tv_nsec - t1.tv_nsec);
-      cas_lat[id%8][count++]=elapsed_ns;
+      cas_lat[id][count++]=elapsed_ns;
 	  break;
 	}
       else
 	{
 	  //fail
-	  cas_fail[id%8]++; 
+	  cas_fail[id]++; 
 	}
       }
     }
@@ -221,6 +221,7 @@ main (int argc, char **argv)
 		case 4 :
 			reader = 8;
 			caser =24;
+   			break;
 		default : 
 			fprintf(stderr, "Invalid test type: %d\n", test);
                 	print_usage(argv[0]);
@@ -279,8 +280,8 @@ for (int i = 0; i < threadcount; i++)
   if (caser != 0) {
     int suc = 0, fail = 0;
     filter_and_analyze(cas_lat, "CAS", caser);
-    for (int i = 0; i < caser; i++) {
-        printf("[%d] Success :  %d, Fail: %d\n", i, cas_success[i], cas_fail[i]);
+    for (int i = 0; i < threadcount; i++) {
+        //printf("[%d] Success :  %d, Fail: %d\n", i, cas_success[i], cas_fail[i]);
         suc += cas_success[i];
         fail += cas_fail[i];
     }
