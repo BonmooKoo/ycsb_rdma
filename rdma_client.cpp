@@ -22,8 +22,8 @@
 using namespace std;
 #define MAXTHREAD 32
 #define TOTALOP 32000000//32M
-#define SIZEOFNODE 1024 
-//#define SIZEOFNODE 4096 
+//#define SIZEOFNODE 1024 
+#define SIZEOFNODE 4096 
 int* key=new int[TOTALOP];
 int cas_success[MAXTHREAD];
 int cas_fail[MAXTHREAD];
@@ -221,6 +221,10 @@ main (int argc, char **argv)
 		case 4 :
 			reader = 8;
 			caser =24;
+   			break;
+		case 5 :
+			reader = 16;
+			caser = 16;
    			break;
 		default : 
 			fprintf(stderr, "Invalid test type: %d\n", test);
