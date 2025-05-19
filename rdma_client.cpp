@@ -22,7 +22,8 @@
 using namespace std;
 #define MAXTHREAD 32
 #define TOTALOP 32000000//32M
-#define SIZEOFNODE 1024 
+//#define SIZEOFNODE 1024 
+#define SIZEOFNODE 4096 
 int* key=new int[TOTALOP];
 int cas_success[8];
 int cas_fail[8];
@@ -175,13 +176,13 @@ auto filter_and_analyze = [](uint64_t lat_arr[][TOTALOP / MAXTHREAD], const char
     size_t idx;
 
     idx = merged.size() * 0.50;
-    printf("%s 50th percentile latency: %.2f us\n", label, merged[idx] / 1000.0);
+    printf("%s tail: %.2f\t", label, merged[idx] / 1000.0);
 
     idx = merged.size() * 0.99;
-    printf("%s 99th percentile latency: %.2f us\n", label, merged[idx] / 1000.0);
+    printf("%.2f\t", merged[idx] / 1000.0);
 
     idx = merged.size() * 0.999;
-    printf("%s 99.9th percentile latency: %.2f us\n", label, merged[idx] / 1000.0);
+    printf("%.2f us\n",merged[idx] / 1000.0);
 };
 
 
@@ -217,6 +218,9 @@ main (int argc, char **argv)
 		case 3 : 
 			reader = 32;
 			break;
+		case 4 :
+			reader = 8;
+			caser =24;
 		default : 
 			fprintf(stderr, "Invalid test type: %d\n", test);
                 	print_usage(argv[0]);
