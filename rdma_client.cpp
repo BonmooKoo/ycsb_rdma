@@ -37,6 +37,7 @@ int read_key(){
     const int key_range = 1600000;
     // 1) Zipf
     //*
+    printf("Zipf\n");
     ZipfGenerator zipf(key_range, 0.99);
     for (int i = 0; i < TOTALOP; ++i) {
         key[i] = zipf.Next();
@@ -45,6 +46,7 @@ int read_key(){
     //*/
     // 2) Uniform
     /*
+    printf("Unif\n");
     std::mt19937_64 rng(std::random_device{}());
     std::uniform_int_distribution<int> dist(0, key_range - 1);
     for (int i = 0; i < TOTALOP; ++i) {
@@ -115,9 +117,9 @@ test_cas (int id)
 	  //success so unlock it 
 	  int result = rdma_CAS_returnvalue (1, 0, (key[i] % (ALLOCSIZE / SIZEOFNODE)) * SIZEOFNODE, 8, 0, id);
 	  cas_success[id]++;
-      clock_gettime(CLOCK_MONOTONIC_RAW, &t2);    
-      uint64_t elapsed_ns = (t2.tv_sec - t1.tv_sec) * 1e9 + (t2.tv_nsec - t1.tv_nsec);
-      cas_lat[id][count++]=elapsed_ns;
+          clock_gettime(CLOCK_MONOTONIC_RAW, &t2);    
+          uint64_t elapsed_ns = (t2.tv_sec - t1.tv_sec) * 1e9 + (t2.tv_nsec - t1.tv_nsec);
+          cas_lat[id][count++]=elapsed_ns;
 	  break;
 	}
       else
@@ -176,13 +178,13 @@ auto filter_and_analyze = [](uint64_t lat_arr[][TOTALOP / MAXTHREAD], const char
     size_t idx;
 
     idx = merged.size() * 0.50;
-    printf("%s tail: %.2f,", label, merged[idx] / 1000.0);
+    printf("%s tail(us): %.2f,", label, merged[idx] / 1000.0);
 
     idx = merged.size() * 0.99;
     printf("%.2f,", merged[idx] / 1000.0);
 
     idx = merged.size() * 0.999;
-    printf("%.2f us\n",merged[idx] / 1000.0);
+    printf("%.2f\n",merged[idx] / 1000.0);
 };
 
 
@@ -215,17 +217,20 @@ main (int argc, char **argv)
 			reader = 24;
 			caser = 8;
 			break;
-		case 3 : 
-			reader = 32;
-			break;
+		case 3 :
+			reader = 16;
+			caser = 16;
+   			break;
 		case 4 :
 			reader = 8;
 			caser =24;
    			break;
-		case 5 :
-			reader = 16;
-			caser = 16;
-   			break;
+		case 5 : 
+			reader = 32;
+			break;
+		case 6 : 
+			caser = 32;
+			break;
 		default : 
 			fprintf(stderr, "Invalid test type: %d\n", test);
                 	print_usage(argv[0]);
@@ -277,10 +282,14 @@ for (int i = 0; i < threadcount; i++)
   clock_gettime (CLOCK_MONOTONIC_RAW, &t2);
   //end time
   printf ("End test\n");
-  unsigned long timer =
-    (t2.tv_sec - t1.tv_sec) * 1000000000UL + t2.tv_nsec - t1.tv_nsec;
+  unsigned long timer =(t2.tv_sec - t1.tv_sec) * 1000000000UL + t2.tv_nsec - t1.tv_nsec;
   printf ("Time : %lu msec\n", timer / 1000);
   //Get Tail latency
+
+if (reader != 0) {
+    filter_and_analyze(read_lat, "READ", reader);
+}
+
   if (caser != 0) {
     int suc = 0, fail = 0;
     filter_and_analyze(cas_lat, "CAS", caser);
@@ -292,14 +301,9 @@ for (int i = 0; i < threadcount; i++)
     printf("TOTAL Success : %d , Fail : %d\n", suc, fail);
 }
 
-if (reader != 0) {
-    filter_and_analyze(read_lat, "READ", reader);
-}
-
 if (smallreader != 0) {
     filter_and_analyze(smallread_lat, "SmallREAD", smallreader);
 }
-
 
 
 
