@@ -162,7 +162,7 @@ void print_usage(const char* prog_name) {
 }
 auto filter_and_analyze = [](uint64_t lat_arr[][TOTALOP / MAXTHREAD], const char* label, int count) {
     std::vector<uint64_t> merged;
-    for (int i = 0; i < count; ++i) {
+    for (int i = 0; i < MAXTHREAD; ++i) {
         for (int j = 0; j < TOTALOP / MAXTHREAD; ++j) {
             if (lat_arr[i][j] != 0)
                 merged.push_back(lat_arr[i][j]);
