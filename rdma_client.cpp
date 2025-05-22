@@ -238,7 +238,7 @@ main (int argc, char **argv)
 		case 6 : 
 			caser = 32;
 			reader = 0;
-			caser = 0;
+			smallreader = 0;
 			break;
 		default : 
 			fprintf(stderr, "Invalid test type: %d\n", test);
