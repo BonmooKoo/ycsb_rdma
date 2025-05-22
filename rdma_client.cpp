@@ -52,7 +52,7 @@ int read_key(){
     for (int i = 0; i < TOTALOP; ++i) {
         key[i] = dist(rng);
     }
-    */
+    //*/
     /*
     for (int i=0;i<key_range;i++){
 	key[i] = i;
@@ -108,9 +108,9 @@ test_cas (int id)
   printf ("[%d]START\n", id);
   for (int i = id; i < TOTALOP; i += threadcount)
     {
+      clock_gettime(CLOCK_MONOTONIC_RAW, &t1);
       while(true){
       //rdma_CAS(compare,swap,serveradd,datalength,server,threadid)
-      clock_gettime(CLOCK_MONOTONIC_RAW, &t1);
       int result = rdma_CAS_returnvalue (0, 1, (key[i] % (ALLOCSIZE / SIZEOFNODE)) * SIZEOFNODE, 8, 0, id);
       if (result == 0)
 	{
@@ -185,6 +185,13 @@ auto filter_and_analyze = [](uint64_t lat_arr[][TOTALOP / MAXTHREAD], const char
 
     idx = merged.size() * 0.999;
     printf("%.2f\n",merged[idx] / 1000.0);
+    
+   //print all tail latency
+   if (strcmp(label, "CAS") == 0) {
+    for(int j=0;j<merged.size();j++){
+     printf("%.2f\n",merged[j]/1000.0);
+    }
+   }
 };
 
 
@@ -299,13 +306,12 @@ if (reader != 0) {
         fail += cas_fail[i];
     }
     printf("TOTAL Success : %d , Fail : %d\n", suc, fail);
+    
 }
 
 if (smallreader != 0) {
     filter_and_analyze(smallread_lat, "SmallREAD", smallreader);
 }
-
-
 
   client_disconnect_and_clean (threadcount);
   return 0;
