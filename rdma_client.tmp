@@ -25,12 +25,12 @@ using namespace std;
 //#define SIZEOFNODE 1024 
 #define SIZEOFNODE 4096 
 int* key=new int[TOTALOP];
+int cas_try[MAXTHREAD][TOTALOP/MAXTHREAD]={0};
 int cs_num;
 int threadcount;
 uint64_t read_lat[MAXTHREAD][TOTALOP/MAXTHREAD]={0};
 uint64_t smallread_lat[MAXTHREAD][TOTALOP/MAXTHREAD]={0};
 uint64_t cas_lat[MAXTHREAD][TOTALOP/MAXTHREAD]={0};
-int cas_try[MAXTHREAD][TOTALOP/MAXTHREAD]={0};
 
 int read_key(){
     const int key_range = 1600000;
@@ -334,20 +334,12 @@ if (reader != 0) {
 
   if (caser != 0) {
     int fail;
-    std::vector<int> cas_count;
     filter_and_analyze(cas_lat, "CAS", caser);
     for (int i = 0; i < threadcount; i++) {
         //printf("[%d] Success :  %d, Fail: %d\n", i, cas_success[i], cas_fail[i]);
         for (int j=0;j<TOTALOP/MAXTHREAD;j++)
         	fail += cas_try[i][j];
-                if(cas_try[i][j]!=0)
-                	cas_count.push_back(cas_try[i][j]);
     }
-    if(cas_count.empty())
-	return;
-    std::sort(cas_count.begin(),cas_count.end());
-    for(int i=0;i<cas_count.size();i++)
-	printf("%d\n",cas_count[i]);
     printf("TOTAL Try : %d\n", fail);
     
 }
