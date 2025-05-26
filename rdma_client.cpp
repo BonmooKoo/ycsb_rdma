@@ -338,16 +338,17 @@ if (reader != 0) {
     filter_and_analyze(cas_lat, "CAS", caser);
     for (int i = 0; i < threadcount; i++) {
         //printf("[%d] Success :  %d, Fail: %d\n", i, cas_success[i], cas_fail[i]);
-        for (int j=0;j<TOTALOP/MAXTHREAD;j++)
+        for (int j=0;j<TOTALOP/MAXTHREAD;j++){
         	fail += cas_try[i][j];
                 if(cas_try[i][j]!=0)
                 	cas_count.push_back(cas_try[i][j]);
+    	}
     }
-    if(cas_count.empty())
-	return;
+    if(!cas_count.empty()){
     std::sort(cas_count.begin(),cas_count.end());
     for(int i=0;i<cas_count.size();i++)
 	printf("%d\n",cas_count[i]);
+    }
     printf("TOTAL Try : %d\n", fail);
     
 }
