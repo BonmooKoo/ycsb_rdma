@@ -25,8 +25,7 @@ using namespace std;
 //#define SIZEOFNODE 1024 
 #define SIZEOFNODE 4096 
 int* key=new int[TOTALOP];
-int cas_success[MAXTHREAD];
-int cas_fail[MAXTHREAD];
+int cas_try[MAXTHREAD][TOTALOP/MAXTHREAD]={0};
 int cs_num;
 int threadcount;
 uint64_t read_lat[MAXTHREAD][TOTALOP/MAXTHREAD]={0};
@@ -115,17 +114,17 @@ test_cas (int id)
       if (result == 0)
 	{
 	  //success so unlock it 
-	  int result = rdma_CAS_returnvalue (1, 0, (key[i] % (ALLOCSIZE / SIZEOFNODE)) * SIZEOFNODE, 8, 0, id);
-	  cas_success[id]++;
           clock_gettime(CLOCK_MONOTONIC_RAW, &t2);    
           uint64_t elapsed_ns = (t2.tv_sec - t1.tv_sec) * 1e9 + (t2.tv_nsec - t1.tv_nsec);
+	  cas_try[id][count]++; 
           cas_lat[id][count++]=elapsed_ns;
+	  int result = rdma_CAS_returnvalue (1, 0, (key[i] % (ALLOCSIZE / SIZEOFNODE)) * SIZEOFNODE, 8, 0, id);
 	  break;
 	}
       else
 	{
 	  //fail
-	  cas_fail[id]++; 
+	  cas_try[id][count]++; 
 	}
       }
     }
@@ -149,6 +148,38 @@ test_read (int id)
     }
   printf ("[%d]END\n", id);
 }
+int test_mix(int id)
+{
+  timespec t1,t2;
+  int result;
+  int count=0;
+  printf ("[%d]START\n", id);
+  for (int i = id; i < TOTALOP; i += threadcount)
+    {
+      clock_gettime(CLOCK_MONOTONIC_RAW, &t1);
+      while(true){
+      //rdma_CAS(compare,swap,serveradd,datalength,server,threadid)
+      int result = rdma_CAS_returnvalue (0, 1, (key[i] % (ALLOCSIZE / SIZEOFNODE)) * SIZEOFNODE, 8, 0, id);
+      if (result == 0)
+	{
+	  //success so unlock it 
+          clock_gettime(CLOCK_MONOTONIC_RAW, &t2);    
+          uint64_t elapsed_ns = (t2.tv_sec - t1.tv_sec) * 1e9 + (t2.tv_nsec - t1.tv_nsec);
+	  cas_try[id][count]++; 
+          cas_lat[id][count++]=elapsed_ns;
+	  int result = rdma_CAS_returnvalue (1, 0, (key[i] % (ALLOCSIZE / SIZEOFNODE)) * SIZEOFNODE, 8, 0, id);
+	  break;
+	}
+      else
+	{
+	  //fail
+	  cas_try[id][count]++; 
+	}
+      }
+    }
+  printf ("[%d]END\n", id);
+}
+
 
 void print_usage(const char* prog_name) {
     printf("Usage: %s -c <client_num> -t <test_type>\n", prog_name);
@@ -300,14 +331,14 @@ if (reader != 0) {
 }
 
   if (caser != 0) {
-    int suc = 0, fail = 0;
+    int fail;
     filter_and_analyze(cas_lat, "CAS", caser);
     for (int i = 0; i < threadcount; i++) {
         //printf("[%d] Success :  %d, Fail: %d\n", i, cas_success[i], cas_fail[i]);
-        suc += cas_success[i];
-        fail += cas_fail[i];
+        for (int j=0;j<TOTALOP/MAXTHREAD;j++)
+        	fail += cas_try[i][j];
     }
-    printf("TOTAL Success : %d , Fail : %d\n", suc, fail);
+    printf("TOTAL Try : %d\n", fail);
     
 }
 
